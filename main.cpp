@@ -390,17 +390,17 @@ static const char* cShader = "                                          \n\
 precision highp float;                                                  \n\
                                                                         \n\
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;        \n\
-layout(rgba32f, binding = 0) readonly uniform highp image2D in_tex;     \n\
-layout(rgba32f, binding = 1) writeonly uniform highp image2D out_tex;   \n\
+layout(rgba32f, binding = 0) uniform readonly highp image2D in_tex;     \n\
+layout(rgba32f, binding = 1) uniform writeonly highp image2D out_tex;   \n\
                                                                         \n\
 void main() {                                                           \n\
     // get position to read/write data from                             \n\
-    ivec2 pos = ivec2( gl_GlobalInvocationID.xy );                      \n\
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);                        \n\
                                                                         \n\
     // get value stored in the image                                    \n\
-    vec4 in_val = imageLoad( in_tex, pos);                              \n\
+    vec4 in_val = imageLoad(in_tex, pos);                               \n\
                                                                         \n\
-    /* Convert YUV to RGBA */                                           \n\
+    /* Conversion logic from YUV to RGBA */                             \n\
                                                                         \n\
     // store new value in image                                         \n\
     imageStore(out_tex, pos, in_val);                                   \n\
@@ -459,22 +459,7 @@ void RunComputeShader(int width, int height)
 
    glUseProgram(computeShaderProgram);
 
-   glActiveTexture(GL_TEXTURE0);
-   glBindTexture(GL_TEXTURE_2D, hdrTexture);
-   glBindImageTexture(0, hdrTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-
-   color_rgba data[height][width];
-
-   for (int j = 0; j < height; j++) {
-      for (int i = 0; i < width; i++) {
-         data[j][i].r = 0.0f;
-         data[j][i].g = 0.0f;
-         data[j][i].b = 0.0f;
-         data[j][i].a = 0.0f;
-      }
-   }
-
-   glActiveTexture(GL_TEXTURE1);
+   /* Output texture for the compute shader */
    glGenTextures(1, &convertedHdrTexture);
    glBindTexture(GL_TEXTURE_2D, convertedHdrTexture);
 
@@ -482,8 +467,17 @@ void RunComputeShader(int width, int height)
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, data);
-   glBindImageTexture(1, convertedHdrTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+
+   glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, width, height);
+   glBindTexture(GL_TEXTURE_2D, 0);
+
+   /* Bind both input and output textures
+    * Note: In case of YUV data, upto 3 textures may need to be provided as inputs
+    * for multiple planes in the YUV data. In this case, the data is already in RGBA
+    * form, so given input is simply redirected to the ouput as it is.
+    */
+   glBindImageTexture(0, hdrTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+   glBindImageTexture(1, convertedHdrTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
    glDispatchCompute((unsigned int)width, (unsigned int)height, 1);
    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
@@ -555,7 +549,8 @@ void LoadHDRTexture(int width, int height, Array2D<Rgba> &p) {
       }
    }
 
-   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, data);
+   glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, width, height);
+   glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_FLOAT, data);
    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
@@ -691,7 +686,7 @@ int main() {
    LoadHDRTexture(width, height, hdr_pixels);
    RunComputeShader(width, height);
 
-   glBindTexture(GL_TEXTURE_2D, hdrTexture);
+   glBindTexture(GL_TEXTURE_2D, convertedHdrTexture);
 
    // Clear the window
    glClearColor(0.3f, 0.5f, 0.6f, 1.0f);
