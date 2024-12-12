@@ -33,5 +33,6 @@
 
 # PPM files
 *.ppm
+*.png
 .vscode
 exr-tone-mapping

@@ -47,14 +47,13 @@ void computeSpecialBrightnessValues(float *scene_luminance, int width, int heigh
             const float luminance = *((scene_luminance + y * width) + x);
             if (luminance > max_scene_brightness)
                max_scene_brightness = luminance;
-            float value = log(luminance);
-            totalLuminance += luminance;
+            totalLuminance += log(luminance);
       }
    }
 
    avg_scene_brightness = static_cast<float>(exp(totalLuminance / totalPixels));
-   // cout << "Maximum Scene Brightness: " << max_scene_brightness << endl;
-   // cout << "Average Scene Brightness: " << avg_scene_brightness << endl;
+   cout << "Maximum Scene Brightness: " << max_scene_brightness << endl;
+   cout << "Average Scene Brightness: " << avg_scene_brightness << endl;
 }
 
 void scaleLuminances(float *scene_luminance, float avg_scene_brightness, int width, int height) {

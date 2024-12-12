@@ -91,9 +91,10 @@ void main()                                                                     
                                                                                                             \n\
 	// Gamma correction                                                                                      \n\
 	float gamma = 1.0f / 2.4f;                                                                               \n\
-	FragColor = vec4(gamma_correct(out_color.r),                                                             \n\
-                    gamma_correct(out_color.g),                                                             \n\
-                    gamma_correct(out_color.b), 1.0f);                                                      \n\
+	FragColor = vec4(clamp(gamma_correct(out_color.r), 0.0f, 1.0f),                                          \n\
+                    clamp(gamma_correct(out_color.g), 0.0f, 1.0f),                                          \n\
+                    clamp(gamma_correct(out_color.b), 0.0f, 1.0f),                                          \n\
+                    1.0f);                                                                                  \n\
 }";
 
 static const char* cShader = "                                          \n\
@@ -598,7 +599,7 @@ bool gl_render_scene(RgbaInputFile &file, int width, int height) {
    eglSwapBuffers(egl_display, egl_surface);
 
    // Save the rendered image to a file
-   gl_save_10bit_image("reinhard-extended-chapel-with-gamma-correction-16bit.ppm", width, height);
+   gl_save_10bit_image("reinhard-extended-chapel-with-gamma-correction-10bit.ppm", width, height);
 
    glDeleteVertexArrays(1, &VAO);
    glDeleteBuffers(1, &VBO);
